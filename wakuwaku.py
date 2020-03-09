@@ -26,15 +26,21 @@ bl_info = {
 def center_mat(xv, yv, p_mat, p_norm):
     xv = xv.vert.co
     yv = yv.vert.co
-    loc = p_mat @ ((xv + yv) / 2)
+    loc = (p_mat @ xv + p_mat @ yv) / 2
     muki = (p_mat @ yv - p_mat @ xv)
-    cro = muki.cross(p_norm)
+    print("p_matp_matp_mat",p_mat,p_norm)
+    mx_inv = p_mat.inverted()
+    mx_norm = mx_inv.transposed().to_3x3()
+    world_no = mx_norm @ p_norm
+    world_no.normalize()
+    cro = muki.cross(world_no)
     cro.normalize()
     muki.normalize()
-    m = mathutils.Matrix([[muki.x, -cro.x, p_norm.x, loc.x],
-                          [muki.y, -cro.y, p_norm.y, loc.y],
-                          [muki.z, -cro.z, p_norm.z, loc.z], [0, 0, 0, 1]])
+    m = Matrix([[muki.x, -cro.x, world_no.x, loc.x],
+                [muki.y, -cro.y, world_no.y, loc.y],
+                [muki.z, -cro.z, world_no.z, loc.z], [0, 0, 0, 1]])
     return m
+
 
 
 ###########################
