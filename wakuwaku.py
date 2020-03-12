@@ -8,7 +8,7 @@ from bpy.props import FloatProperty, EnumProperty,BoolProperty
 bl_info = {
     "name": "多角形の平面の内側に枠を付けるアドオン",
     "author": "勝己（kastumi）",
-    "version": (1, 0),
+    "version": (1, 1),
     "blender": (2, 80, 0),
     "location": "3Dビューポート > 追加 > メッシュ",
     "description": "多角形の平面の内側に枠を付けるアドオン",
@@ -88,6 +88,11 @@ def edg_length3(mat, edge):
     l = (mat @ edge.verts[0].co - mat @ edge.verts[1].co).length
     return l
 
+def ca_angle(loop,mat):
+    v0 = mat @ loop.vert.co-mat @ loop.link_loop_next.vert.co
+    v1 = mat @ loop.link_loop_next.vert.co - mat @ loop.link_loop_next.link_loop_next.vert.co
+    rad = pi-v0.angle(v1)
+    return rad
 
 class hasigo:
     def __init__(self):
@@ -324,9 +329,9 @@ class WAKU_OT_CreateObject(bpy.types.Operator):
             zero.waku_type = waku_type
             zero.cont = cont
             zero.p_len = p_len
-            zero.angle = xv.calc_angle()
-            zero.another_angle = xv.link_loop_prev.calc_angle()
-            zero.other_angle = xv.link_loop_next.calc_angle()
+            zero.angle = ca_angle(xv,p_mat)
+            zero.another_angle = ca_angle(xv.link_loop_prev,p_mat)
+            zero.other_angle = ca_angle(xv.link_loop_next,p_mat)
             zero.another_width = another_width
             zero.width = width
             zero.is_conv = xv.is_convex
@@ -346,9 +351,9 @@ class WAKU_OT_CreateObject(bpy.types.Operator):
             one.waku_type = waku_type
             one.cont = cont
             one.p_len = p_len
-            one.angle = xv.link_loop_next.calc_angle()
-            one.another_angle = xv.link_loop_next.link_loop_next.calc_angle()
-            one.other_angle = xv.calc_angle()
+            one.angle = ca_angle(xv.link_loop_next,p_mat)
+            one.another_angle = ca_angle(xv.link_loop_next.link_loop_next,p_mat)
+            one.other_angle = ca_angle(xv,p_mat)
             one.another_width = another_width
             one.width = width
             one.is_conv = xv.link_loop_next.is_convex
