@@ -89,8 +89,8 @@ def edg_length3(mat, edge):
     return l
 
 def ca_angle(loop,mat):
-    v0 = mat @ loop.edge.verts[0].co-mat @ loop.edge.verts[1].co
-    v1 = mat @ loop.link_loop_prev.edge.verts[0].co - mat @ loop.link_loop_prev.edge.verts[1].co
+    v0 = mat @ loop.vert.co-mat @ loop.link_loop_next.vert.co
+    v1 = mat @ loop.link_loop_prev.vert.co - mat @ loop.vert.co
     rad = pi-v0.angle(v1)
     return rad
 
