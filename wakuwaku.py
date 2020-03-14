@@ -8,7 +8,7 @@ from bpy.props import FloatProperty, EnumProperty,BoolProperty
 bl_info = {
     "name": "多角形の平面の内側に枠を付けるアドオン",
     "author": "勝己（kastumi）",
-    "version": (1, 1),
+    "version": (2.0),
     "blender": (2, 80, 0),
     "location": "3Dビューポート > 追加 > メッシュ",
     "description": "多角形の平面の内側に枠を付けるアドオン",
@@ -59,9 +59,18 @@ def shear_rad(bm, rad, id, n):
                             orient_axis_ortho='X',
                             orient_type='LOCAL',
                             orient_matrix_type='GLOBAL')
-    bpy.ops.transform.translate(value=va,
-                                orient_type='LOCAL',
-                                orient_matrix_type='GLOBAL')
+                            
+#    bpy.ops.transform.translate(value=va,
+#                                orient_type='LOCAL',
+#                                orient_matrix_type='GLOBAL')
+    
+    obj = bpy.context.object
+    for v in bm.verts:
+        if v.select:
+            v.co = [v.co.x + va[0]/obj.scale[0],
+                    v.co.y + va[1]/obj.scale[1],
+                    v.co.z + va[2]/obj.scale[2]]
+            
 
 
 ################################################
@@ -79,7 +88,27 @@ def end_face(ids, width, length_adj, xv, bme, t, rad, n):
     bpy.ops.mesh.select_all(action='DESELECT')
     id = ids
     bme.faces[id].select_set(True)
-    bpy.ops.transform.translate(value=(0, 0, length_adj), orient_type='NORMAL')
+    #bpy.ops.transform.translate(value=(0, 0, length_adj), orient_type='NORMAL')
+    obj=bpy.context.object
+    msh=obj.data
+    va = Vector((0,0,length_adj))
+    mat = obj.matrix_world
+    m =mat.copy()
+    
+    norm = bme.faces[id].normal
+    mx_inv = mat.inverted()
+    mx_norm = mx_inv.transposed().to_3x3()
+    world_norm = mx_norm @ norm
+    world_norm.normalize()
+    m[0][2] = world_norm[0]
+    m[1][2] = world_norm[1]
+    m[2][2] = world_norm[2]
+    gro=m @ va
+    lo=mx_inv @ gro
+    for v in bme.faces[id].verts: 
+          v.co = v.co+ lo
+    
+    
     if round(degrees(rad)) != 0:
         shear_rad(bme, rad, id, n)
 
@@ -165,13 +194,13 @@ class hasigo:
             print("el7")
         
 
-        elif self.cont == 0 and self.p_len % 2 == 1 and self.n%2 == 0 :
+        elif self.waku_type == '1' and self.cont == 0 and self.p_len % 2 == 1 and self.n%2 == 0 :
             #０個目で面の頂点が奇数の場合
             self.length_adj = 0
             self.rad = [-1, 1][self.is_conv] * self.angle / 2 - pi / 2
             print(3)
            
-        elif self.cont == self.p_len - 1 and self.p_len % 2 == 1 and self.n%2 == 1:
+        elif self.waku_type == '1' and self.cont == self.p_len - 1 and self.p_len % 2 == 1 and self.n%2 == 1:
             #最後の1個目で面の頂点が奇数の場合
           
             self.rad = [-1, 1][self.is_conv] * self.angle / 2 - pi / 2
@@ -185,11 +214,17 @@ class hasigo:
                 self.rad =self.sw* [-1, 1][self.is_conv] * (self.angle - pi / 2)
                 self.length_adj = (self.another_width / sin(self.angle))
             else:
-                #普通の場合
-                print("futuu-else")
-                self.rad = [-1, 1][self.is_conv] * (self.angle - pi / 2)
-                self.length_adj = self.sw * self.is_conv * (-self.another_width /
+                if self.waku_type == '2' and self.cont == 0 :
+                    print("futuu-type2")
+                    self.rad = [-1, 1][self.is_conv] * (self.angle - pi / 2)
+                    self.length_adj = self.sw * self.is_conv * (-self.width /
                                                             sin(self.angle))
+                else:
+                    #普通の場合
+                    print("futuu-else")
+                    self.rad = [-1, 1][self.is_conv] * (self.angle - pi / 2)
+                    self.length_adj = self.sw * self.is_conv * (-self.another_width /
+                                                            sin(self.angle))    
             print("angle", degrees(self.angle))
         print("end")
 
@@ -215,7 +250,7 @@ class WAKU_OT_CreateObject(bpy.types.Operator):
     v_width: FloatProperty(
         name="縦の枠の幅",
         description="幅を設定します",
-        default=8.0,
+        default=2.0,
      )
     h_width: FloatProperty(
             name="横の枠の幅",
@@ -262,14 +297,14 @@ class WAKU_OT_CreateObject(bpy.types.Operator):
 
         plane = bpy.context.object
         #bmshをオブジェクトモードのまま使う
+        p_mat = plane.matrix_world
         bm = bmesh.new()
         bm.from_mesh(plane.data)
         bm.faces.ensure_lookup_table()
         loops = bm.faces[0].loops
-        p_mat = plane.matrix_world
+            
         p_norm = bm.faces[0].normal
-        mw_loc, mw_rot, mw_scale = p_mat.decompose()
-        p_norm = mw_rot.to_matrix() @ p_norm
+        
         p_len = len(loops)
         #cont = 2 ; xv=loops[cont]
         #if 1==1:
@@ -295,8 +330,19 @@ class WAKU_OT_CreateObject(bpy.types.Operator):
             else:
                 width = v_width
                 another_width = h_width
-            bpy.ops.transform.resize(value=(1, width, t), orient_type='LOCAL')
-            bpy.ops.object.transform_apply(scale=True)
+            #bpy.ops.transform.resize(value=(1, width, t), orient_type='LOCAL')
+            obj.scale=[obj.scale[0] * 1 , obj.scale[1] * width , obj.scale[2] * t]
+
+            
+            #bpy.ops.object.transform_apply(scale=True)
+            for v in obj.data.vertices:
+                verts=[]
+                for s,vv in zip(obj.scale,v.co):
+                    verts.append(s*vv)
+                v.co=verts
+            obj.scale = [1,1,1]
+            
+            
             yv = xv.link_loop_next
             obj.matrix_world = center_mat(xv, yv, p_mat, p_norm)
             #オブジェクトを辺の長さに合わせる
@@ -305,9 +351,16 @@ class WAKU_OT_CreateObject(bpy.types.Operator):
             obj.data.update()
             #位置調節
             offset = Vector((0, width / 2, t / 2))
-            bpy.ops.transform.translate(value=offset,
-                                        orient_type='LOCAL',
-                                        orient_matrix_type='LOCAL')
+#            bpy.ops.transform.translate(value=offset,
+#                                        orient_type='LOCAL',
+#                                        orient_matrix_type='LOCAL')
+#                                        
+                                        
+            msh = obj.data
+            for v in msh.vertices:
+                if v.select:
+                    v.co = [v.co.x+0/obj.scale[0], v.co.y+(width/2)/obj.scale[1], v.co.z+(t/2)/obj.scale[2]]
+
             bpy.ops.object.mode_set(mode='EDIT')
             obm = bmesh.from_edit_mesh(obj.data)
             obm.faces.ensure_lookup_table()
