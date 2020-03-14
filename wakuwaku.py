@@ -8,7 +8,7 @@ from bpy.props import FloatProperty, EnumProperty,BoolProperty
 bl_info = {
     "name": "多角形の平面の内側に枠を付けるアドオン",
     "author": "勝己（kastumi）",
-    "version": (2.0),
+    "version": (2, 0),
     "blender": (2, 81, 0),
     "location": "3Dビューポート > 追加 > メッシュ",
     "description": "多角形の平面の内側に枠を付けるアドオン",
