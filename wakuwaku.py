@@ -89,11 +89,11 @@ def end_face(ids, width, length_adj, xv, bme, t, rad, n):
     id = ids
     bme.faces[id].select_set(True)
     #bpy.ops.transform.translate(value=(0, 0, length_adj), orient_type='NORMAL')
-    obj=bpy.context.object
-    msh=obj.data
+    obj = bpy.context.object
+    msh = obj.data
     va = Vector((0,0,length_adj))
     mat = obj.matrix_world
-    m =mat.copy()
+    m = mat.copy()
     
     norm = bme.faces[id].normal
     mx_inv = mat.inverted()
@@ -103,14 +103,18 @@ def end_face(ids, width, length_adj, xv, bme, t, rad, n):
     m[0][2] = world_norm[0]
     m[1][2] = world_norm[1]
     m[2][2] = world_norm[2]
-    gro=m @ va
-    lo=mx_inv @ gro
+    gro = m @ va
+    lo = mx_inv @ gro
+    
+    
     for v in bme.faces[id].verts: 
           v.co = v.co+ lo
     
     
     if round(degrees(rad)) != 0:
         shear_rad(bme, rad, id, n)
+    
+    
 
 
 def edg_length3(mat, edge):
@@ -349,6 +353,7 @@ class WAKU_OT_CreateObject(bpy.types.Operator):
             scale_mat = obj_length(p_mat, xv.edge)
             obj.data.transform(scale_mat)
             obj.data.update()
+            #break
             #位置調節
             offset = Vector((0, width / 2, t / 2))
 #            bpy.ops.transform.translate(value=offset,
@@ -357,10 +362,16 @@ class WAKU_OT_CreateObject(bpy.types.Operator):
 #                                        
                                         
             msh = obj.data
-            for v in msh.vertices:
-                if v.select:
-                    v.co = [v.co.x+0/obj.scale[0], v.co.y+(width/2)/obj.scale[1], v.co.z+(t/2)/obj.scale[2]]
 
+            if plane.scale.z < 0:
+                for v in msh.vertices:
+                    if v.select:
+                        v.co = [v.co.x+0/obj.scale[0], v.co.y-(width/2)/obj.scale[1], v.co.z+(t/2)/obj.scale[2]]
+            else:
+                for v in msh.vertices:
+                    if v.select:
+                        v.co = [v.co.x+0/obj.scale[0], v.co.y+(width/2)/obj.scale[1], v.co.z+(t/2)/obj.scale[2]]
+                        
             bpy.ops.object.mode_set(mode='EDIT')
             obm = bmesh.from_edit_mesh(obj.data)
             obm.faces.ensure_lookup_table()
@@ -423,10 +434,10 @@ class WAKU_OT_CreateObject(bpy.types.Operator):
             rad[1], length_adj[1] = one.rad, one.length_adj
 
             rad = [-rad[0], rad[1]]
-
+            
             for i, ids in enumerate(index):
                 end_face(ids, width, length_adj[i], xv, obm, t, rad[i], n)
-
+            
             bpy.ops.object.mode_set(mode='OBJECT')
             print(cont)
 
