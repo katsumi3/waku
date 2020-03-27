@@ -364,9 +364,10 @@ class WAKU_OT_CreateObject(bpy.types.Operator):
             msh = obj.data
 
             if plane.scale.z < 0:
+                obj.rotation_euler.x = obj.rotation_euler.x + pi
                 for v in msh.vertices:
                     if v.select:
-                        v.co = [v.co.x+0/obj.scale[0], v.co.y-(width/2)/obj.scale[1], v.co.z+(t/2)/obj.scale[2]]
+                        v.co = [v.co.x+0/obj.scale[0], v.co.y+(width/2)/obj.scale[1], v.co.z-(t/2)/obj.scale[2]]
             else:
                 for v in msh.vertices:
                     if v.select:
