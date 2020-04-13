@@ -6,12 +6,12 @@ from mathutils import Vector, Matrix
 from bpy.props import FloatProperty, EnumProperty,BoolProperty
 
 bl_info = {
-    "name": "多角形の平面の内側に枠を付けるアドオン",
+    "name": "多角形の平面に枠を付けるアドオン",
     "author": "勝己（kastumi）",
-    "version": (2, 0),
+    "version": (3, 0),
     "blender": (2, 81, 0),
     "location": "3Dビューポート > 追加 > メッシュ",
-    "description": "多角形の平面の内側に枠を付けるアドオン",
+    "description": "多角形の平面に枠を付けるアドオン",
     "warning": "",
     "support": "TESTING",
     "wiki_url": "",
@@ -44,7 +44,7 @@ def center_mat(xv, yv, p_mat, p_norm):
 
 
 ###########################
-def shear_rad(bm, rad, id, n):
+def shear_rad(bm, rad, id, n, pos):
     bm.faces.ensure_lookup_table()
     axis = 'Z'
     if axis == 'Z':
@@ -67,9 +67,14 @@ def shear_rad(bm, rad, id, n):
     obj = bpy.context.object
     for v in bm.verts:
         if v.select:
-            v.co = [v.co.x + va[0]/obj.scale[0],
-                    v.co.y + va[1]/obj.scale[1],
-                    v.co.z + va[2]/obj.scale[2]]
+            if pos == "1":
+                v.co = [v.co.x + va[0]/obj.scale[0],
+                        v.co.y + va[1]/obj.scale[1],
+                        v.co.z + va[2]/obj.scale[2]]
+            elif pos == "3":
+                v.co = [v.co.x - va[0]/obj.scale[0],
+                        v.co.y - va[1]/obj.scale[1],
+                        v.co.z - va[2]/obj.scale[2]]
             
 
 
@@ -77,14 +82,13 @@ def shear_rad(bm, rad, id, n):
 #def obj_length()->辺の長さにobjの大きさを合わせる
 def obj_length(mat, edge):
     l = (mat @ edge.verts[0].co - mat @ edge.verts[1].co).length
-    #scale = mat.to_scale() * l
     scale = [l]
     scale_mat = Matrix.Scale(scale[0], 4, (1, 0, 0))
     return scale_mat
 
 
 #############################################
-def end_face(ids, width, length_adj, xv, bme, t, rad, n):
+def end_face(ids, width, length_adj, xv, bme, t, rad, n, pos):
     bpy.ops.mesh.select_all(action='DESELECT')
     id = ids
     bme.faces[id].select_set(True)
@@ -108,13 +112,11 @@ def end_face(ids, width, length_adj, xv, bme, t, rad, n):
     
     
     for v in bme.faces[id].verts: 
-          v.co = v.co+ lo
+          v.co = v.co + lo
     
     
     if round(degrees(rad)) != 0:
-        shear_rad(bme, rad, id, n)
-    
-    
+        shear_rad(bme, rad, id, n, pos)
 
 
 def edg_length3(mat, edge):
@@ -185,8 +187,6 @@ class hasigo:
             self.length_adj = 0
             print("el4")
 
-
-
         elif edg_length3(self.p_mat, self.another_edge) * abs(tan(
                 self.angle)) < self.another_width and self.is_conv and round(
                     degrees(self.angle)) != 0:
@@ -203,32 +203,55 @@ class hasigo:
             self.length_adj = 0
             self.rad = [-1, 1][self.is_conv] * self.angle / 2 - pi / 2
             print(3)
+            
+        elif self.waku_type == '2' and self.cont == 0 and self.p_len % 2 == 1 and self.n%2 == 0 :
+            #０個目で面の頂点が奇数の場合
+            print("type2_fist_kisuu")
+            self.rad = [-1, 1][self.is_conv] * (self.angle - pi / 2)
+            self.length_adj = [0,1][self.sw] * [-1, 1][self.is_conv] * (-self.width /
+                                                            sin(self.angle))
+           
            
         elif self.waku_type == '1' and self.cont == self.p_len - 1 and self.p_len % 2 == 1 and self.n%2 == 1:
             #最後の1個目で面の頂点が奇数の場合
-          
             self.rad = [-1, 1][self.is_conv] * self.angle / 2 - pi / 2
             self.length_adj = 0
             print("el8")
-    
+        
+        elif self.waku_type == '2' and self.cont == self.p_len - 1 and self.p_len % 2 == 1 and self.n%2 == 1:
+            #最後の1個目で面の頂点が奇数の場合
+            self.rad = [-1, 1][self.is_conv] * (self.angle - pi / 2)  
+            self.length_adj = self.sw * [0, -1][self.is_conv] * (self.width /sin(self.angle))  
 
         elif 0 <= self.cont < self.p_len:
+            #if self.sw == 0 and self.is_conv == 0:
             if self.sw == 0 and self.is_conv == 0:
-                print("futu-if")
-                self.rad =self.sw* [-1, 1][self.is_conv] * (self.angle - pi / 2)
-                self.length_adj = (self.another_width / sin(self.angle))
+                if self.waku_type == '2' and self.cont == 0 :
+                    print("waku_type2")
+                    self.rad = [-1, 1][self.is_conv] * (self.angle - pi / 2)
+                    self.length_adj = [1,-1][self.sw] * [-1, 1][self.is_conv] * (-self.width /
+                                                           sin(self.angle))  
+                                                           
+                else:
+                    print("futu-if")
+                    self.rad = self.sw * [-1, 1][self.is_conv] * (self.angle - pi / 2)
+                    self.length_adj = (self.another_width / sin(self.angle))
+                    
+                
             else:
                 if self.waku_type == '2' and self.cont == 0 :
                     print("futuu-type2")
                     self.rad = [-1, 1][self.is_conv] * (self.angle - pi / 2)
-                    self.length_adj = self.sw * self.is_conv * (-self.width /
+                    self.length_adj = [0,-1][self.sw] * [1, -1][self.is_conv] * (-self.another_width /
                                                             sin(self.angle))
+                                                            
                 else:
                     #普通の場合
                     print("futuu-else")
-                    self.rad = [-1, 1][self.is_conv] * (self.angle - pi / 2)
+                    self.rad = [-1, 1][self.is_conv] * (self.angle - pi / 2)  
                     self.length_adj = self.sw * self.is_conv * (-self.another_width /
-                                                            sin(self.angle))    
+                                                            sin(self.angle))  
+                      
             print("angle", degrees(self.angle))
         print("end")
 
@@ -237,38 +260,48 @@ class WAKU_OT_CreateObject(bpy.types.Operator):
 
     bl_idname = "object.waku_create_object"
     bl_label = "枠"
-    bl_description = "多角形の平面の内側に枠を付けます"
+    bl_description = "多角形の平面に枠を付けます"
     bl_options = {'REGISTER', 'UNDO'}
 
 
     waku_type: EnumProperty(
-        name="枠の形状",
-        description="移動軸を設定します",
-        default='1',
-        items=[
+        name = "枠の形状",
+        description = "移動軸を設定します",
+        default = '1',
+        items = [
             ('1', "梯子", "梯子風にします"),
             ('2', "風車", "風車風にします"),
             ('3', "額縁", "額縁風にします"),
         ]
     )
+    waku_pos: EnumProperty(
+        name = "枠の位置",
+        description = "枠の位置を設定します",
+        default = '1',
+        items = [
+            ('1', "内側", "内側にします"),
+            #('2', "中央", "中央にします"),
+            ('3', "外側", "外側にします"),
+        ]
+    )
     v_width: FloatProperty(
-        name="縦の枠の幅",
-        description="幅を設定します",
-        default=2.0,
+        name = "縦の枠の幅",
+        description = "幅を設定します",
+        default = 2.0,
      )
     h_width: FloatProperty(
-            name="横の枠の幅",
-            description="幅を設定します",
-            default=1.0,
+            name = "横の枠の幅",
+            description = "幅を設定します",
+            default = 1.0,
      )
     t: FloatProperty(
-            name="厚み",
-            description="厚みを設定します",
-            default=1.0,
+            name = "厚み",
+            description = "厚みを設定します",
+            default = 1.0,
         )
     inv: BoolProperty(
          name = "反転",
-         description="反転するかを設定します",
+         description = "反転するかを設定します",
          default = False,
      )
 
@@ -285,6 +318,7 @@ class WAKU_OT_CreateObject(bpy.types.Operator):
         #初期設定####################################
         #waku_type = 1  #1:梯子状　2:風車風　#3平留め継ぎ(額縁風)
         waku_type = self.waku_type
+        waku_pos = self.waku_pos
         #v_width = 8  # 梯子の縦になってる木の幅
         v_width = self.v_width
         #h_width = 1  # 梯子の横の方の木の幅
@@ -318,13 +352,13 @@ class WAKU_OT_CreateObject(bpy.types.Operator):
             #                                enter_editmode=False,
             #                                location=(0, 0, 0))
             
-            currentPath=bpy.utils.script_paths() [2] + "/addons/"
-            filename="hikide.blend"
-            path=currentPath+filename+"/"
-            obj=bpy.ops.wm.append(
-                directory=path+"Object/",
-                link=False,
-                filename="ki")
+            currentPath = bpy.utils.script_paths() [2] + "/addons/"
+            filename = "hikide.blend"
+            path = currentPath + filename + "/"
+            obj = bpy.ops.wm.append(
+                directory = path + "Object/",
+                link = False,
+                filename = "ki")
             bpy.context.view_layer.objects.active=bpy.context.selected_objects[0]
             obj = bpy.context.object
             #縦か横か？
@@ -335,15 +369,15 @@ class WAKU_OT_CreateObject(bpy.types.Operator):
                 width = v_width
                 another_width = h_width
             #bpy.ops.transform.resize(value=(1, width, t), orient_type='LOCAL')
-            obj.scale=[obj.scale[0] * 1 , obj.scale[1] * width , obj.scale[2] * t]
+            obj.scale = [obj.scale[0] * 1 , obj.scale[1] * width , obj.scale[2] * t]
 
             
             #bpy.ops.object.transform_apply(scale=True)
             for v in obj.data.vertices:
-                verts=[]
+                verts = []
                 for s,vv in zip(obj.scale,v.co):
                     verts.append(s*vv)
-                v.co=verts
+                v.co = verts
             obj.scale = [1,1,1]
             
             
@@ -355,7 +389,6 @@ class WAKU_OT_CreateObject(bpy.types.Operator):
             obj.data.update()
             #break
             #位置調節
-            offset = Vector((0, width / 2, t / 2))
 #            bpy.ops.transform.translate(value=offset,
 #                                        orient_type='LOCAL',
 #                                        orient_matrix_type='LOCAL')
@@ -367,12 +400,18 @@ class WAKU_OT_CreateObject(bpy.types.Operator):
                 obj.rotation_euler.x = obj.rotation_euler.x + pi
                 for v in msh.vertices:
                     if v.select:
-                        v.co = [v.co.x+0/obj.scale[0], v.co.y+(width/2)/obj.scale[1], v.co.z-(t/2)/obj.scale[2]]
+                        if waku_pos == "1":
+                            v.co = [v.co.x + 0 / obj.scale[0], v.co.y + (width / 2) / obj.scale[1], v.co.z - (t / 2) / obj.scale[2]]
+                        if waku_pos == "3":
+                            v.co = [v.co.x + 0 / obj.scale[0], v.co.y - (width / 2) / obj.scale[1], v.co.z - (t / 2) / obj.scale[2]]
             else:
                 for v in msh.vertices:
                     if v.select:
-                        v.co = [v.co.x+0/obj.scale[0], v.co.y+(width/2)/obj.scale[1], v.co.z+(t/2)/obj.scale[2]]
-                        
+                        if waku_pos == "1":
+                            v.co = [v.co.x + 0 / obj.scale[0], v.co.y + (width / 2) / obj.scale[1], v.co.z + (t / 2) / obj.scale[2]]
+                        elif waku_pos == "3":
+                            v.co = [v.co.x + 0 / obj.scale[0], v.co.y - (width / 2) / obj.scale[1], v.co.z + (t / 2) / obj.scale[2]]
+            
             bpy.ops.object.mode_set(mode='EDIT')
             obm = bmesh.from_edit_mesh(obj.data)
             obm.faces.ensure_lookup_table()
@@ -388,17 +427,31 @@ class WAKU_OT_CreateObject(bpy.types.Operator):
             off_l = [0, 0]
             zero = hasigo()
             if waku_type == "1":
-                zero.sw = (n % 2 == 0)
+                if waku_pos == "1":
+                    zero.sw = (n % 2 == 0)
+                    zero.another_width = another_width
+                    zero.width = width
+                elif waku_pos == "3":
+                    zero.sw = (n % 2 == 1)
+                    zero.another_width = -another_width
+                    zero.width = -width
             elif waku_type == "2":
-                zero.sw = 1
+                if waku_pos == "1":
+                    zero.sw = 0
+                    zero.another_width = another_width
+                    zero.width = width
+                elif waku_pos == "3":
+                    zero.sw = 1
+                    zero.another_width = -another_width
+                    zero.width = -width
             zero.waku_type = waku_type
             zero.cont = cont
             zero.p_len = p_len
             zero.angle = ca_angle(xv,p_mat)
             zero.another_angle = ca_angle(xv.link_loop_prev,p_mat)
             zero.other_angle = ca_angle(xv.link_loop_next,p_mat)
-            zero.another_width = another_width
-            zero.width = width
+            
+            
             zero.is_conv = xv.is_convex
             zero.other_is_conv = xv.link_loop_next.is_convex
             zero.p_mat = p_mat
@@ -410,17 +463,31 @@ class WAKU_OT_CreateObject(bpy.types.Operator):
 
             one = hasigo()
             if waku_type == "1":
-                one.sw = (n % 2 == 0)
+                if waku_pos == "1":
+                    one.sw = (n % 2 == 0)
+                    one.another_width = another_width
+                    one.width = width
+                elif waku_pos == "3":
+                    one.sw = (n % 2 == 1)
+                    one.another_width = -another_width
+                    one.width = width
             elif waku_type == "2":
-                one.sw = 0
+                if waku_pos == "1":
+                    one.sw = 1
+                    one.another_width = another_width
+                    one.width = width
+                elif waku_pos == "3":
+                    one.sw = 0
+                    one.another_width = another_width
+                    one.width = width
             one.waku_type = waku_type
             one.cont = cont
             one.p_len = p_len
             one.angle = ca_angle(xv.link_loop_next,p_mat)
             one.another_angle = ca_angle(xv.link_loop_next.link_loop_next,p_mat)
             one.other_angle = ca_angle(xv,p_mat)
-            one.another_width = another_width
-            one.width = width
+            
+            
             one.is_conv = xv.link_loop_next.is_convex
             one.other_is_conv = xv.link_loop_prev.is_convex
             one.p_mat = p_mat
@@ -437,7 +504,7 @@ class WAKU_OT_CreateObject(bpy.types.Operator):
             rad = [-rad[0], rad[1]]
             
             for i, ids in enumerate(index):
-                end_face(ids, width, length_adj[i], xv, obm, t, rad[i], n)
+                end_face(ids, width, length_adj[i], xv, obm, t, rad[i], n ,waku_pos)
             
             bpy.ops.object.mode_set(mode='OBJECT')
             print(cont)
