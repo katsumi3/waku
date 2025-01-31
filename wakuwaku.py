@@ -1,4 +1,4 @@
-# 2.8用
+# 4.2用
 
 import bpy, mathutils, bmesh,bpy.ops
 from math import pi, radians, degrees, sqrt, cos, acos, tan, sin, atan
@@ -352,7 +352,7 @@ class WAKU_OT_CreateObject(bpy.types.Operator):
             #                                enter_editmode=False,
             #                                location=(0, 0, 0))
             
-            currentPath = bpy.utils.script_paths() [2] + "/addons/"
+            currentPath = bpy.utils.script_paths() [-1] + "/addons/"
             filename = "hikide.blend"
             path = currentPath + filename + "/"
             obj = bpy.ops.wm.append(
